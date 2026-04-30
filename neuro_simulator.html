@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>НейроСим — Симулятор нейронних мереж</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a24;
+    --panel: #14141e;
+    --border: #2a2a3e;
+    --accent: #00e5ff;
+    --accent2: #ff6b35;
+    --accent3: #a855f7;
+    --text: #e8e8f0;
+    --text2: #8888aa;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --glow: 0 0 20px rgba(0,229,255,0.3);
+    --glow2: 0 0 20px rgba(168,85,247,0.3);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Space Mono',monospace; min-height:100vh; overflow-x:hidden; }
+
+  #sidebar {
+    position:fixed; left:0; top:0; width:220px; height:100vh;
+    background:var(--panel); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; z-index:100; padding:24px 0;
+  }
+  .logo {
+    padding:0 20px 24px; border-bottom:1px solid var(--border);
+    font-family:'Syne',sans-serif; font-weight:800; font-size:20px;
+    color:var(--accent); letter-spacing:-0.5px;
+  }
+  .logo span { color:var(--accent3); }
+  .logo small { display:block; font-size:10px; color:var(--text2); font-family:'Space Mono',monospace; font-weight:400; margin-top:4px; }
+  nav { flex:1; padding:16px 0; }
+  .nav-item {
+    display:flex; align-items:center; gap:10px; padding:12px 20px;
+    cursor:pointer; color:var(--text2); font-size:12px; transition:all .2s;
+    border-left:3px solid transparent; margin:2px 0;
+  }
+  .nav-item:hover { color:var(--text); background:rgba(255,255,255,.03); }
+  .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:rgba(0,229,255,.05); }
+  .nav-icon { font-size:16px; width:20px; text-align:center; }
+  .sidebar-footer {
+    padding:16px 20px; border-top:1px solid var(--border);
+    font-size:10px; color:var(--text2); line-height:1.6;
+  }
+  .sidebar-footer strong { color:var(--accent3); }
+
+  #main { margin-left:220px; min-height:100vh; }
+  .page { display:none; padding:32px; }
+  .page.active { display:block; }
+  .page-title {
+    font-family:'Syne',sans-serif; font-size:28px; font-weight:800;
+    margin-bottom:6px; color:var(--text);
+  }
+  .page-title span { color:var(--accent); }
+  .page-sub { color:var(--text2); font-size:12px; margin-bottom:32px; }
+
+  .card {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:12px; padding:24px; margin-bottom:20px;
+  }
+  .card-title {
+    font-family:'Syne',sans-serif; font-weight:700; font-size:14px;
+    color:var(--accent); margin-bottom:16px; text-transform:uppercase;
+    letter-spacing:1px;
+  }
+
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; }
+
+  label { font-size:11px; color:var(--text2); display:block; margin-bottom:6px; }
+  input[type=range] {
+    width:100%; accent-color:var(--accent); cursor:pointer;
+    height:4px; border-radius:2px;
+  }
+  input[type=number], input[type=text], select {
+    background:var(--bg3); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:8px 12px; font-family:'Space Mono',monospace;
+    font-size:12px; width:100%; outline:none; transition:.2s;
+  }
+  input[type=number]:focus, input[type=text]:focus, select:focus {
+    border-color:var(--accent); box-shadow:0 0 0 2px rgba(0,229,255,.1);
+  }
+  .val-display {
+    font-size:11px; color:var(--accent); float:right; font-weight:700;
+  }
+  .form-group { margin-bottom:16px; }
+
+  .btn {
+    padding:10px 20px; border-radius:8px; border:none; cursor:pointer;
+    font-family:'Space Mono',monospace; font-size:12px; font-weight:700;
+    transition:all .2s; display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn-primary { background:var(--accent); color:#000; }
+  .btn-primary:hover { box-shadow:var(--glow); transform:translateY(-1px); }
+  .btn-secondary { background:transparent; border:1px solid var(--border); color:var(--text2); }
+  .btn-secondary:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-danger { background:var(--red); color:#fff; }
+  .btn-purple { background:var(--accent3); color:#fff; }
+  .btn-purple:hover { box-shadow:var(--glow2); transform:translateY(-1px); }
+  .btn-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+
+  canvas { border-radius:8px; display:block; }
+
+  #neuron-canvas-wrap {
+    background:var(--bg2); border:1px solid var(--border); border-radius:12px;
+    padding:16px; position:relative; overflow:hidden;
+  }
+  #neuron-canvas { width:100%; cursor:crosshair; }
+
+  .signal-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .signal-table th {
+    background:var(--bg3); color:var(--accent); padding:8px 12px;
+    text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+  }
+  .signal-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
+  .signal-table tr:last-child td { border-bottom:none; }
+  .signal-table tr:hover td { background:rgba(255,255,255,.02); }
+
+  .tag {
+    display:inline-block; padding:2px 8px; border-radius:4px;
+    font-size:10px; font-weight:700;
+  }
+  .tag-pos { background:rgba(34,197,94,.15); color:var(--green); }
+  .tag-neg { background:rgba(239,68,68,.15); color:var(--red); }
+  .tag-zero { background:rgba(136,136,170,.15); color:var(--text2); }
+
+  .act-result {
+    text-align:center; padding:20px;
+  }
+  .act-result .value {
+    font-size:48px; font-family:'Syne',sans-serif; font-weight:800;
+    color:var(--accent);
+  }
+  .act-result .label { font-size:11px; color:var(--text2); margin-top:4px; }
+  .formula-box {
+    background:var(--bg3); border-left:3px solid var(--accent3);
+    padding:12px 16px; border-radius:0 8px 8px 0; font-size:13px;
+    margin:12px 0; font-style:italic; color:var(--text2);
+  }
+  .formula-box strong { color:var(--text); }
+
+  .progress-wrap { background:var(--bg3); border-radius:4px; height:8px; overflow:hidden; margin-top:8px; }
+  .progress-bar { height:100%; border-radius:4px; transition:width .5s ease; }
+
+  #net-canvas { background:var(--bg2); border-radius:8px; width:100%; }
+  .layer-badge {
+    display:inline-block; padding:4px 10px; border-radius:20px;
+    font-size:11px; background:rgba(0,229,255,.1); color:var(--accent);
+    border:1px solid rgba(0,229,255,.2); margin-right:6px; margin-bottom:6px;
+  }
+
+  #loss-chart { background:var(--bg2); border-radius:8px; }
+  .epoch-info {
+    display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;
+  }
+  .stat-box {
+    background:var(--bg3); border-radius:8px; padding:12px; text-align:center;
+    border:1px solid var(--border);
+  }
+  .stat-box .sv { font-size:22px; font-family:'Syne',sans-serif; font-weight:800; }
+  .stat-box .sl { font-size:10px; color:var(--text2); margin-top:2px; }
+  .stat-box.accent { border-color:rgba(0,229,255,.3); }
+  .stat-box.accent .sv { color:var(--accent); }
+  .stat-box.purple .sv { color:var(--accent3); }
+  .stat-box.green .sv { color:var(--green); }
+  .stat-box.orange .sv { color:var(--accent2); }
+
+  .truth-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .truth-table th {
+    background:var(--bg3); color:var(--text2); padding:8px 12px;
+    font-size:11px; text-align:center;
+  }
+  .truth-table td { padding:8px 12px; border-bottom:1px solid var(--border); text-align:center; }
+  .correct { color:var(--green); }
+  .wrong { color:var(--red); }
+
+  .doc-section { margin-bottom:32px; }
+  .doc-section h3 {
+    font-family:'Syne',sans-serif; font-size:16px; color:var(--accent3);
+    margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border);
+  }
+  .doc-section p { font-size:12px; color:var(--text2); line-height:1.8; margin-bottom:10px; }
+  .doc-section ul { font-size:12px; color:var(--text2); padding-left:20px; line-height:2; }
+  .doc-section li::marker { color:var(--accent); }
+  .doc-section code {
+    background:var(--bg3); padding:2px 6px; border-radius:4px;
+    color:var(--accent2); font-family:'Space Mono',monospace; font-size:11px;
+  }
+  .highlight-box {
+    background:rgba(0,229,255,.05); border:1px solid rgba(0,229,255,.15);
+    border-radius:8px; padding:16px; margin:12px 0;
+  }
+  .highlight-box p { margin:0; color:var(--text); }
+
+  #export-log {
+    background:var(--bg3); border-radius:8px; padding:16px;
+    font-size:11px; color:var(--text2); line-height:2; min-height:120px;
+    white-space:pre-wrap; border:1px solid var(--border);
+    font-family:'Space Mono',monospace;
+  }
+
+  .tooltip {
+    position:relative; display:inline-block; cursor:help;
+    border-bottom:1px dashed var(--text2); color:var(--text2); font-size:11px;
+  }
+  .tooltip:hover::after {
+    content:attr(data-tip);
+    position:absolute; bottom:120%; left:50%; transform:translateX(-50%);
+    background:#1e1e2e; border:1px solid var(--border); color:var(--text);
+    padding:8px 12px; border-radius:6px; white-space:nowrap; font-size:11px;
+    z-index:999; pointer-events:none; box-shadow:0 4px 20px rgba(0,0,0,.5);
+  }
+
+  #notif {
+    position:fixed; top:20px; right:20px; background:var(--panel);
+    border:1px solid var(--accent); color:var(--accent); padding:12px 20px;
+    border-radius:8px; font-size:12px; z-index:9999; opacity:0;
+    transition:opacity .3s; pointer-events:none; box-shadow:var(--glow);
+  }
+  #notif.show { opacity:1; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+  .page.active { animation:fadeIn .3s ease; }
+  .running { animation:pulse 1s infinite; color:var(--yellow); }
+
+  .chip-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .chip {
+    padding:4px 12px; border-radius:20px; font-size:11px; cursor:pointer;
+    border:1px solid var(--border); color:var(--text2); transition:.2s;
+    background:transparent;
+  }
+  .chip.active { background:var(--accent3); border-color:var(--accent3); color:#fff; }
+  .chip:hover { border-color:var(--text2); color:var(--text); }
+
+  ::-webkit-scrollbar { width:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<div id="notif">✓ Дія виконана</div>
+
+<div id="sidebar">
+  <div class="logo">НейроСим<span>.</span>
+    <small>Neural Network Simulator</small>
+  </div>
+  <nav>
+    <div class="nav-item active" onclick="showPage('neuron')">
+      <span class="nav-icon">⚡</span> Нейрон
+    </div>
+    <div class="nav-item" onclick="showPage('network')">
+      <span class="nav-icon">🕸</span> Мережа
+    </div>
+    <div class="nav-item" onclick="showPage('training')">
+      <span class="nav-icon">🎯</span> Навчання
+    </div>
+    <div class="nav-item" onclick="showPage('activations')">
+      <span class="nav-icon">📈</span> Активації
+    </div>
+    <div class="nav-item" onclick="showPage('export')">
+      <span class="nav-icon">💾</span> Результати
+    </div>
+    <div class="nav-item" onclick="showPage('docs')">
+      <span class="nav-icon">📖</span> Довідка
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <strong>© Дембіцький О.Ю.</strong><br>
+    Студент гр. ПП-32<br>
+    Навч. інтер. симулятор<br>
+    нейронних мереж, 2025
+  </div>
+</div>
+
+<div id="main">
+
+<!-- PAGE: НЕЙРОН -->
+<div class="page active" id="page-neuron">
+  <div class="page-title">Модель <span>нейрона</span></div>
+  <div class="page-sub">Інтерактивна симуляція одного штучного нейрона — введіть вхідні дані і спостерігайте процес обчислення</div>
+
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <div class="card-title">⚙ Параметри нейрона</div>
+
+        <div class="form-group">
+          <label>Функція активації
+            <span class="tooltip" data-tip="Визначає вихідний сигнал нейрона залежно від зваженої суми">(?)</span>
+          </label>
+          <select id="n-activation" onchange="calcNeuron()">
+            <option value="sigmoid">Sigmoid σ(x) = 1/(1+e⁻ˣ)</option>
+            <option value="relu">ReLU f(x) = max(0,x)</option>
+            <option value="tanh">Tanh f(x) = tanh(x)</option>
+            <option value="step">Ступінчаста (Heaviside)</option>
+            <option value="linear">Лінійна f(x) = x</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Зсув (Bias) <span id="bias-val" class="val-display">0.00</span></label>
+          <input type="range" id="n-bias" min="-3" max="3" step="0.1" value="0" oninput="updateNeuron()">
+        </div>
+
+        <div class="form-group">
+          <label>Кількість входів: <span id="inp-count-val" class="val-display">3</span></label>
+          <input type="range" id="inp-count" min="1" max="6" step="1" value="3" oninput="setInputCount()">
+        </div>
+
+        <div id="inputs-container"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="calcNeuron()">▶ Обчислити</button>
+          <button class="btn btn-secondary" onclick="randomizeNeuron()">🎲 Випадково</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 Таблиця сигналів</div>
+        <table class="signal-table" id="signal-table">
+          <thead><tr><th>Вхід</th><th>Значення</th><th>Вага</th><th>x·w</th><th>Тип</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-title">🧠 Візуалізація нейрона</div>
+        <div id="neuron-canvas-wrap">
+          <canvas id="neuron-canvas" width="500" height="380"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🔢 Результат обчислення</div>
+        <div class="formula-box">
+          <strong>Зважена сума:</strong> z = Σ(xᵢ · wᵢ) + bias<br>
+          <strong>Вихід:</strong> y = f(z)
+        </div>
+        <div class="act-result">
+          <div class="value" id="output-val">—</div>
+          <div class="label">Вихідний сигнал нейрона</div>
+        </div>
+        <div style="margin-top:12px;">
+          <label>Зважена сума z: <span id="z-val" style="color:var(--accent2)">—</span></label>
+          <label style="margin-top:8px">Після активації y: <span id="y-val" style="color:var(--green)">—</span></label>
+          <div class="progress-wrap" style="margin-top:12px">
+            <div class="progress-bar" id="output-bar" style="width:0%;background:var(--accent)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: МЕРЕЖА -->
+<div class="page" id="page-network">
+  <div class="page-title">Архітектура <span>мережі</span></div>
+  <div class="page-sub">Побудуйте власну нейронну мережу — задайте шари і спостерігайте за структурою</div>
+
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <div class="card-title">🏗 Конфігурація мережі</div>
+
+        <div class="form-group">
+          <label>Нейронів у вхідному шарі <span id="inp-layer-val" class="val-display">3</span></label>
+          <input type="range" id="inp-layer" min="1" max="8" value="3" oninput="updateInputLayer()">
+        </div>
+        <div class="form-group">
+          <label>Прихованих шарів <span id="hid-count-val" class="val-display">2</span></label>
+          <input type="range" id="hid-count" min="0" max="4" value="2" oninput="updateHiddenCount()">
+        </div>
+        <div id="hidden-layers-config"></div>
+        <div class="form-group">
+          <label>Нейронів у вихідному шарі <span id="out-layer-val" class="val-display">2</span></label>
+          <input type="range" id="out-layer" min="1" max="6" value="2" oninput="updateOutputLayer()">
+        </div>
+        <div class="form-group">
+          <label>Функція активації</label>
+          <select id="net-activation" onchange="updateActivation()">
+            <option value="sigmoid">Sigmoid</option>
+            <option value="relu">ReLU</option>
+            <option value="tanh">Tanh</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="forwardPass()">▶ Forward Pass</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📐 Структура</div>
+        <div id="layer-badges"></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text2)">
+          <div>Всього нейронів: <strong id="total-neurons" style="color:var(--accent)">—</strong></div>
+          <div style="margin-top:6px">Всього зв'язків: <strong id="total-weights" style="color:var(--accent3)">—</strong></div>
+          <div style="margin-top:6px">Параметрів (з bias): <strong id="total-params" style="color:var(--accent2)">—</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🗺 Графічна схема</div>
+      <canvas id="net-canvas" width="560" height="500"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: НАВЧАННЯ -->
+<div class="page" id="page-training">
+  <div class="page-title">Процес <span>навчання</span></div>
+  <div class="page-sub">Навчіть мережу класифікувати дані — перцептрон для логічних функцій</div>
+
+  <div class="epoch-info">
+    <div class="stat-box accent">
+      <div class="sv" id="stat-epoch">0</div>
+      <div class="sl">Епоха</div>
+    </div>
+    <div class="stat-box purple">
+      <div class="sv" id="stat-loss">—</div>
+      <div class="sl">Помилка (MSE)</div>
+    </div>
+    <div class="stat-box green">
+      <div class="sv" id="stat-acc">—</div>
+      <div class="sl">Точність</div>
+    </div>
+    <div class="stat-box orange">
+      <div class="sv" id="stat-lr">0.1</div>
+      <div class="sl">Швидкість навч.</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <div class="card-title">⚙ Параметри навчання</div>
+
+        <div class="form-group">
+          <label>Задача навчання</label>
+          <div class="chip-row" id="task-chips">
+            <button class="chip active" onclick="setTask('AND')">AND</button>
+            <button class="chip" onclick="setTask('OR')">OR</button>
+            <button class="chip" onclick="setTask('NAND')">NAND</button>
+            <button class="chip" onclick="setTask('NOR')">NOR</button>
+            <button class="chip" onclick="setTask('XOR')">XOR (2 шари)</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Швидкість навчання (lr) <span id="lr-val" class="val-display">0.10</span></label>
+          <input type="range" id="lr-slider" min="0.01" max="1" step="0.01" value="0.1" oninput="updateLR()">
+        </div>
+
+        <div class="form-group">
+          <label>Кількість епох <span id="epoch-val" class="val-display">100</span></label>
+          <input type="range" id="epoch-slider" min="10" max="1000" step="10" value="100" oninput="updateEpochs()">
+        </div>
+
+        <div class="form-group">
+          <label>Функція активації</label>
+          <select id="train-act">
+            <option value="sigmoid">Sigmoid</option>
+            <option value="step">Ступінчаста</option>
+          </select>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="startTraining()" id="train-btn">▶ Навчати</button>
+          <button class="btn btn-secondary" onclick="resetTraining()">↺ Скинути</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 Таблиця результатів</div>
+        <table class="truth-table" id="truth-table">
+          <thead><tr><th>x₁</th><th>x₂</th><th>Очікується</th><th>Виходить</th><th>✓</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📉 Крива навчання (Loss)</div>
+      <canvas id="loss-chart" width="540" height="480"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: АКТИВАЦІЇ -->
+<div class="page" id="page-activations">
+  <div class="page-title">Функції <span>активації</span></div>
+  <div class="page-sub">Порівняйте функції активації та їхні похідні</div>
+
+  <div class="card">
+    <div class="card-title">⚙ Параметри відображення</div>
+    <div class="grid3">
+      <div class="form-group">
+        <label>Функція</label>
+        <div class="chip-row">
+          <button class="chip active" onclick="toggleActFn('sigmoid',this)">Sigmoid</button>
+          <button class="chip active" onclick="toggleActFn('relu',this)">ReLU</button>
+          <button class="chip active" onclick="toggleActFn('tanh',this)">Tanh</button>
+          <button class="chip" onclick="toggleActFn('leaky',this)">Leaky ReLU</button>
+          <button class="chip" onclick="toggleActFn('elu',this)">ELU</button>
+          <button class="chip" onclick="toggleActFn('step',this)">Step</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Показати похідну <input type="checkbox" id="show-deriv" onchange="drawActivations()" style="margin-left:8px;accent-color:var(--accent)"></label>
+      </div>
+      <div class="form-group">
+        <label>Діапазон X: ±<span id="range-val" class="val-display">5</span></label>
+        <input type="range" id="act-range" min="2" max="10" value="5" oninput="drawActivations()">
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">📈 Графік функцій</div>
+      <canvas id="act-canvas" width="540" height="400"></canvas>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">📖 Довідка по функціях</div>
+        <div id="act-info-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔬 Порівняльна таблиця</div>
+        <table class="truth-table">
+          <thead><tr><th>Функція</th><th>Діапазон</th><th>Похідна</th><th>Використання</th></tr></thead>
+          <tbody>
+            <tr><td>Sigmoid</td><td>(0,1)</td><td>σ(1-σ)</td><td>Вихідний шар (бінар.)</td></tr>
+            <tr><td>ReLU</td><td>[0,∞)</td><td>0 або 1</td><td>Приховані шари (CNN)</td></tr>
+            <tr><td>Tanh</td><td>(-1,1)</td><td>1-tanh²</td><td>RNN, приховані шари</td></tr>
+            <tr><td>Leaky ReLU</td><td>(-∞,∞)</td><td>α або 1</td><td>Глибокі мережі</td></tr>
+            <tr><td>ELU</td><td>(-α,∞)</td><td>α·eˣ або 1</td><td>Альтернатива ReLU</td></tr>
+            <tr><td>Step</td><td>{0,1}</td><td>0 (>0)</td><td>Перцептрон</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: РЕЗУЛЬТАТИ -->
+<div class="page" id="page-export">
+  <div class="page-title">Збереження <span>результатів</span></div>
+  <div class="page-sub">Експортуйте результати симуляції або збережіть логи навчання</div>
+
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <div class="card-title">💾 Дії</div>
+        <div class="btn-row" style="flex-direction:column; align-items:flex-start;">
+          <button class="btn btn-primary" onclick="exportJSON()">📄 Зберегти результати (JSON)</button>
+          <button class="btn btn-secondary" onclick="exportCSV()">📊 Зберегти як CSV</button>
+          <button class="btn btn-purple" onclick="exportPNG('neuron-canvas')">🖼 Зберегти схему нейрона (PNG)</button>
+          <button class="btn btn-purple" onclick="exportPNG('net-canvas')">🖼 Зберегти схему мережі (PNG)</button>
+          <button class="btn btn-secondary" onclick="exportPNG('loss-chart')">📉 Зберегти графік навчання (PNG)</button>
+          <button class="btn btn-secondary" onclick="exportPNG('act-canvas')">📈 Зберегти графік активацій (PNG)</button>
+          <button class="btn btn-danger" onclick="clearLog()">🗑 Очистити лог</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">ℹ Інформація про сесію</div>
+        <div style="font-size:12px;color:var(--text2);line-height:2">
+          <div>Версія симулятора: <strong style="color:var(--accent)">1.0.0</strong></div>
+          <div>Автор: <strong style="color:var(--accent3)">Дембіцький О.Ю.</strong></div>
+          <div>Група: <strong style="color:var(--text)">ПП-32</strong></div>
+          <div>Дата: <strong id="session-date" style="color:var(--text)"></strong></div>
+          <div>Дисципліна: <strong style="color:var(--text)">Інтелектуальні інф. системи</strong></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Лог результатів</div>
+      <div id="export-log">// Результати з'являться після проведення симуляції...\n</div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: ДОВІДКА -->
+<div class="page" id="page-docs">
+  <div class="page-title">Довідка та <span>документація</span></div>
+  <div class="page-sub">Інструкція користувача, опис алгоритмів і прикладів використання</div>
+
+  <div class="grid2">
+    <div>
+      <div class="card">
+        <div class="card-title">📌 Інструкція користувача</div>
+        <div class="doc-section">
+          <h3>🚀 Початок роботи</h3>
+          <p>Симулятор складається з чотирьох основних розділів, доступних через бічне меню:</p>
+          <ul>
+            <li><strong>Нейрон</strong> — моделювання одного штучного нейрона</li>
+            <li><strong>Мережа</strong> — побудова багатошарової нейронної мережі</li>
+            <li><strong>Навчання</strong> — процес навчання перцептрона</li>
+            <li><strong>Активації</strong> — порівняння функцій активації</li>
+          </ul>
+        </div>
+        <div class="doc-section">
+          <h3>⚡ Розділ "Нейрон"</h3>
+          <p>Встановіть кількість входів, задайте значення та ваги для кожного входу, оберіть функцію активації та зсув (bias). Натисніть <code>▶ Обчислити</code> щоб побачити результат. Кнопка <code>🎲 Випадково</code> заповнює поля випадковими значеннями.</p>
+        </div>
+        <div class="doc-section">
+          <h3>🕸 Розділ "Мережа"</h3>
+          <p>Налаштуйте кількість нейронів у кожному шарі. Натисніть <code>▶ Forward Pass</code> — мережа активується і відображає сигнали між шарами у вигляді кольорових зв'язків.</p>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">📐 Теоретична основа</div>
+        <div class="doc-section">
+          <h3>Модель штучного нейрона (МакКаллок–Піттс)</h3>
+          <p>Штучний нейрон отримує вхідні сигнали x₁, x₂, ..., xₙ, кожен з яких множиться на вагу wᵢ. Потім обчислюється зважена сума з урахуванням зсуву (bias):</p>
+          <div class="formula-box"><strong>z = x₁·w₁ + x₂·w₂ + ... + xₙ·wₙ + b</strong></div>
+          <p>До результату застосовується функція активації f(z), яка визначає вихідний сигнал нейрона:</p>
+          <div class="formula-box"><strong>y = f(z)</strong></div>
+        </div>
+        <div class="doc-section">
+          <h3>Алгоритм зворотного поширення помилки</h3>
+          <p>Навчання перцептрона відбувається методом градієнтного спуску. На кожній епосі оновлюються ваги:</p>
+          <div class="formula-box"><strong>w := w - lr · ∂L/∂w</strong></div>
+          <p>де <code>lr</code> — швидкість навчання, <code>∂L/∂w</code> — градієнт функції втрат.</p>
+        </div>
+        <div class="doc-section">
+          <h3>Функції активації</h3>
+          <ul>
+            <li><strong>Sigmoid:</strong> σ(x) = 1 / (1 + e⁻ˣ) — вихід від 0 до 1</li>
+            <li><strong>ReLU:</strong> f(x) = max(0, x) — швидке навчання</li>
+            <li><strong>Tanh:</strong> f(x) = tanh(x) — вихід від -1 до 1</li>
+            <li><strong>Step:</strong> f(x) = 1 якщо x>0, інакше 0</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💡 Приклади використання</div>
+    <div class="grid3">
+      <div class="highlight-box">
+        <p><strong style="color:var(--accent)">Приклад 1: AND Gate</strong><br>
+        Перейдіть у розділ «Навчання», оберіть задачу AND та натисніть «Навчати». Перцептрон навчиться відтворювати функцію логічного «І» за кілька десятків епох.</p>
+      </div>
+      <div class="highlight-box">
+        <p><strong style="color:var(--accent)">Приклад 2: Вплив bias</strong><br>
+        У розділі «Нейрон» встановіть всі ваги рівними 0.5. Змініть значення bias від -3 до +3 і спостерігайте зміну виходу при однакових вхідних сигналах.</p>
+      </div>
+      <div class="highlight-box">
+        <p><strong style="color:var(--accent)">Приклад 3: Порівняння активацій</strong><br>
+        Перейдіть у «Активації» і увімкніть/вимкніть різні функції. Увімкніть «Показати похідну» щоб побачити, чому ReLU страждає від «мертвих нейронів».</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ===== UTILITY =====
+const sigmoid = x => 1 / (1 + Math.exp(-x));
+const relu = x => Math.max(0, x);
+const tanh_ = x => Math.tanh(x);
+const step = x => x >= 0 ? 1 : 0;
+const linear = x => x;
+const leaky = x => x >= 0 ? x : 0.01 * x;
+const elu = x => x >= 0 ? x : Math.exp(x) - 1;
+
+const activations = { sigmoid, relu, tanh: tanh_, step, linear, leaky, elu };
+
+const sigmoid_d = x => sigmoid(x) * (1 - sigmoid(x));
+const relu_d = x => x > 0 ? 1 : 0;
+const tanh_d = x => 1 - Math.tanh(x) ** 2;
+const leaky_d = x => x >= 0 ? 1 : 0.01;
+const elu_d = x => x >= 0 ? 1 : Math.exp(x);
+const step_d = () => 0;
+const derivatives = { sigmoid: sigmoid_d, relu: relu_d, tanh: tanh_d, leaky: leaky_d, elu: elu_d, step: step_d };
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const items = document.querySelectorAll('.nav-item');
+  const pages = ['neuron','network','training','activations','export','docs'];
+  items[pages.indexOf(name)].classList.add('active');
+  if(name==='network') setTimeout(refreshNetworkVisual, 100);
+  if(name==='activations') setTimeout(drawActivations, 100);
+}
+
+function notify(msg) {
+  const n = document.getElementById('notif');
+  n.textContent = '✓ ' + msg;
+  n.classList.add('show');
+  setTimeout(() => n.classList.remove('show'), 2500);
+}
+
+function appendLog(msg) {
+  const log = document.getElementById('export-log');
+  const ts = new Date().toLocaleTimeString('uk-UA');
+  log.textContent += `[${ts}] ${msg}\n`;
+}
+
+// ===== NEURON PAGE =====
+let nInputs = 3;
+function setInputCount() {
+  nInputs = parseInt(document.getElementById('inp-count').value);
+  document.getElementById('inp-count-val').textContent = nInputs;
+  buildInputs();
+  calcNeuron();
+}
+
+function buildInputs() {
+  const c = document.getElementById('inputs-container');
+  c.innerHTML = '';
+  for(let i = 0; i < nInputs; i++) {
+    c.innerHTML += `
+      <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <div>
+          <label>Вхід x${i+1} <span id="xv${i}" class="val-display">0.5</span></label>
+          <input type="range" id="x${i}" min="-2" max="2" step="0.1" value="0.5" oninput="document.getElementById('xv${i}').textContent=parseFloat(this.value).toFixed(1); calcNeuron()">
+        </div>
+        <div>
+          <label>Вага w${i+1} <span id="wv${i}" class="val-display">0.5</span></label>
+          <input type="range" id="w${i}" min="-2" max="2" step="0.1" value="0.5" oninput="document.getElementById('wv${i}').textContent=parseFloat(this.value).toFixed(2); calcNeuron()">
+        </div>
+      </div>`;
+  }
+}
+buildInputs();
+
+function updateNeuron() {
+  document.getElementById('bias-val').textContent = parseFloat(document.getElementById('n-bias').value).toFixed(2);
+  calcNeuron();
+}
+
+function randomizeNeuron() {
+  for(let i = 0; i < nInputs; i++) {
+    const xEl = document.getElementById('x'+i);
+    const wEl = document.getElementById('w'+i);
+    if(xEl) { xEl.value = (Math.random()*4-2).toFixed(1); document.getElementById('xv'+i).textContent = parseFloat(xEl.value).toFixed(1); }
+    if(wEl) { wEl.value = (Math.random()*4-2).toFixed(1); document.getElementById('wv'+i).textContent = parseFloat(wEl.value).toFixed(2); }
+  }
+  document.getElementById('n-bias').value = (Math.random()*4-2).toFixed(1);
+  updateNeuron();
+}
+
+function calcNeuron() {
+  const bias = parseFloat(document.getElementById('n-bias').value);
+  const actName = document.getElementById('n-activation').value;
+  const fn = activations[actName];
+  
+  let xs = [], ws = [];
+  let z = bias;
+  for(let i = 0; i < nInputs; i++) {
+    const x = parseFloat(document.getElementById('x'+i)?.value || 0.5);
+    const w = parseFloat(document.getElementById('w'+i)?.value || 0.5);
+    xs.push(x); ws.push(w); z += x * w;
+  }
+  const y = fn(z);
+
+  document.getElementById('z-val').textContent = z.toFixed(4);
+  document.getElementById('y-val').textContent = y.toFixed(4);
+  document.getElementById('output-val').textContent = y.toFixed(4);
+  
+  let pct = actName === 'tanh' ? (y + 1) / 2 * 100 :
+            actName === 'sigmoid' ? y * 100 :
+            actName === 'relu' ? Math.min(y / 5 * 100, 100) : 50;
+  document.getElementById('output-bar').style.width = Math.max(0, Math.min(100, pct)) + '%';
+
+  const tbody = document.querySelector('#signal-table tbody');
+  tbody.innerHTML = '';
+  for(let i = 0; i < nInputs; i++) {
+    const prod = (xs[i] * ws[i]).toFixed(4);
+    const tag = prod > 0.001 ? 'pos' : prod < -0.001 ? 'neg' : 'zero';
+    const label = prod > 0.001 ? '+' : prod < -0.001 ? '−' : '≈0';
+    tbody.innerHTML += `<tr>
+      <td>x${i+1}</td><td>${xs[i].toFixed(2)}</td><td>${ws[i].toFixed(2)}</td>
+      <td>${prod}</td><td><span class="tag tag-${tag}">${label}</span></td>
+    </tr>`;
+  }
+  tbody.innerHTML += `<tr style="border-top:1px solid var(--accent)">
+    <td colspan="2" style="color:var(--text2)">bias</td>
+    <td>—</td><td>${bias.toFixed(4)}</td><td></td>
+  </tr>`;
+
+  drawNeuron(xs, ws, y, bias, actName);
+  appendLog(`Нейрон: z=${z.toFixed(3)}, y=${y.toFixed(3)} (${actName})`);
+}
+
+function drawNeuron(xs, ws, y, bias, actName) {
+  const canvas = document.getElementById('neuron-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0d0d15'; ctx.fillRect(0, 0, W, H);
+
+  const cx = W * 0.55, cy = H / 2, cr = 52;
+  const inX = 90;
+  const n = xs.length;
+
+  for(let i = 0; i < n; i++) {
+    const iy = (H / (n + 1)) * (i + 1);
+    const w = ws[i], x = xs[i];
+    const intensity = Math.min(1, Math.abs(w * x));
+    const positive = w * x >= 0;
+    const r = positive ? 0 : 239, g = positive ? 229 : 68, b = positive ? 255 : 68;
+    ctx.strokeStyle = `rgba(${r},${g},${b},${0.3 + intensity * 0.7})`;
+    ctx.lineWidth = 1 + intensity * 3;
+    ctx.beginPath(); ctx.moveTo(inX + 20, iy); ctx.lineTo(cx - cr, cy);
+    ctx.stroke();
+
+    ctx.fillStyle = `rgba(${r},${g},${b},0.9)`;
+    ctx.font = '11px Space Mono';
+    const mx = (inX + 20 + cx - cr) / 2 - 15;
+    const my = (iy + cy) / 2 - 4;
+    ctx.fillText(`w${i+1}=${ws[i].toFixed(2)}`, mx, my);
+  }
+
+  for(let i = 0; i < n; i++) {
+    const iy = (H / (n + 1)) * (i + 1);
+    ctx.beginPath(); ctx.arc(inX, iy, 22, 0, Math.PI * 2);
+    ctx.fillStyle = '#1a1a28'; ctx.fill();
+    ctx.strokeStyle = '#00e5ff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#00e5ff'; ctx.font = 'bold 12px Space Mono'; ctx.textAlign = 'center';
+    ctx.fillText(xs[i].toFixed(1), inX, iy + 5);
+    ctx.fillStyle = '#8888aa'; ctx.font = '10px Space Mono';
+    ctx.fillText(`x${i+1}`, inX, iy - 30);
+    ctx.textAlign = 'left';
+  }
+
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr);
+  grad.addColorStop(0, '#1e1e3a');
+  grad.addColorStop(1, '#0d0d1e');
+  ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+  ctx.fillStyle = grad; ctx.fill();
+  ctx.strokeStyle = '#a855f7'; ctx.lineWidth = 3; ctx.stroke();
+
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 13px Syne'; ctx.textAlign = 'center';
+  ctx.fillText('Σ → f(z)', cx, cy - 8);
+  ctx.fillStyle = '#a855f7'; ctx.font = '11px Space Mono';
+  ctx.fillText(actName, cx, cy + 10);
+  ctx.fillStyle = '#eab308'; ctx.font = '10px Space Mono';
+  ctx.fillText(`b=${bias.toFixed(2)}`, cx, cy + 28);
+
+  const outX = cx + cr + 80;
+  const col = y > 0.5 ? '#22c55e' : '#ef4444';
+  ctx.strokeStyle = col; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(cx + cr, cy); ctx.lineTo(outX, cy); ctx.stroke();
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.moveTo(outX, cy - 8); ctx.lineTo(outX + 14, cy); ctx.lineTo(outX, cy + 8); ctx.closePath(); ctx.fill();
+
+  ctx.beginPath(); ctx.arc(outX + 25, cy, 26, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a28'; ctx.fill();
+  ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = col; ctx.font = 'bold 12px Space Mono'; ctx.textAlign = 'center';
+  ctx.fillText(y.toFixed(3), outX + 25, cy + 5);
+  ctx.fillStyle = '#8888aa'; ctx.font = '10px Space Mono';
+  ctx.fillText('y', outX + 25, cy - 32);
+  ctx.textAlign = 'left';
+}
+
+// ===== NETWORK PAGE (FIXED) =====
+let networkConfig = { inp: 3, hidden: [4, 3], out: 2, act: 'sigmoid' };
+let networkWeights = [];
+let networkActivations = [];
+
+function updateInputLayer() {
+  networkConfig.inp = parseInt(document.getElementById('inp-layer').value);
+  document.getElementById('inp-layer-val').textContent = networkConfig.inp;
+  rebuildNetworkFromConfig();
+}
+
+function updateHiddenCount() {
+  const newCount = parseInt(document.getElementById('hid-count').value);
+  document.getElementById('hid-count-val').textContent = newCount;
+  const currentHidden = networkConfig.hidden;
+  if(newCount > currentHidden.length) {
+    for(let i = currentHidden.length; i < newCount; i++) currentHidden.push(4);
+  } else if(newCount < currentHidden.length) {
+    currentHidden.splice(newCount);
+  }
+  rebuildNetworkFromConfig();
+}
+
+function updateOutputLayer() {
+  networkConfig.out = parseInt(document.getElementById('out-layer').value);
+  document.getElementById('out-layer-val').textContent = networkConfig.out;
+  rebuildNetworkFromConfig();
+}
+
+function updateActivation() {
+  networkConfig.act = document.getElementById('net-activation').value;
+  rebuildNetworkFromConfig();
+}
+
+function updateHiddenLayer(layerIdx, newValue) {
+  networkConfig.hidden[layerIdx] = parseInt(newValue);
+  document.getElementById(`hl${layerIdx}-val`).textContent = newValue;
+  rebuildNetworkFromConfig();
+}
+
+function rebuildNetworkFromConfig() {
+  const inp = networkConfig.inp;
+  const hidden = networkConfig.hidden;
+  const out = networkConfig.out;
+  const act = networkConfig.act;
+  
+  const hidCfg = document.getElementById('hidden-layers-config');
+  hidCfg.innerHTML = '';
+  for(let i = 0; i < hidden.length; i++) {
+    const val = hidden[i];
+    hidCfg.innerHTML += `<div class="form-group">
+      <label>Нейронів у прихованому шарі ${i+1} <span id="hl${i}-val" class="val-display">${val}</span></label>
+      <input type="range" id="hl${i}" min="1" max="10" value="${val}" oninput="updateHiddenLayer(${i}, this.value)">
+    </div>`;
+  }
+  
+  let layers = [inp, ...hidden, out];
+  
+  let totalN = layers.reduce((s, n) => s + n, 0);
+  let totalW = 0, totalP = 0;
+  for(let i = 1; i < layers.length; i++) {
+    totalW += layers[i] * layers[i-1];
+    totalP += layers[i] * (layers[i-1] + 1);
+  }
+  document.getElementById('total-neurons').textContent = totalN;
+  document.getElementById('total-weights').textContent = totalW;
+  document.getElementById('total-params').textContent = totalP;
+
+  let badges = `<span class="layer-badge">Вхід: ${inp}</span>`;
+  hidden.forEach((n,i) => badges += `<span class="layer-badge" style="background:rgba(168,85,247,.1);color:var(--accent3);border-color:rgba(168,85,247,.2)">Прихований ${i+1}: ${n}</span>`);
+  badges += `<span class="layer-badge" style="background:rgba(255,107,53,.1);color:var(--accent2);border-color:rgba(255,107,53,.2)">Вихід: ${out}</span>`;
+  document.getElementById('layer-badges').innerHTML = badges;
+
+  networkWeights = [];
+  for(let i = 1; i < layers.length; i++) {
+    let lw = [];
+    for(let j = 0; j < layers[i]; j++) {
+      let row = [];
+      for(let k = 0; k < layers[i-1]; k++) row.push((Math.random()-0.5)*2);
+      lw.push(row);
+    }
+    networkWeights.push(lw);
+  }
+  networkActivations = layers.map(n => Array(n).fill(0));
+  networkActivations[0] = Array(inp).fill(0).map(() => Math.random());
+  
+  drawNetwork(layers);
+}
+
+function refreshNetworkVisual() {
+  let layers = [networkConfig.inp, ...networkConfig.hidden, networkConfig.out];
+  drawNetwork(layers);
+}
+
+function forwardPass() {
+  let layers = [networkConfig.inp, ...networkConfig.hidden, networkConfig.out];
+  const fn = activations[networkConfig.act];
+  networkActivations[0] = Array(networkConfig.inp).fill(0).map(() => Math.random());
+  
+  for(let l = 1; l < layers.length; l++) {
+    for(let j = 0; j < layers[l]; j++) {
+      let z = 0;
+      for(let k = 0; k < layers[l-1]; k++) z += networkActivations[l-1][k] * networkWeights[l-1][j][k];
+      networkActivations[l][j] = fn(z);
+    }
+  }
+  drawNetwork(layers);
+  appendLog(`Forward pass виконано. Вихід: [${networkActivations[layers.length-1].map(v=>v.toFixed(3)).join(', ')}]`);
+  notify('Forward Pass виконано!');
+}
+
+function drawNetwork(layers) {
+  const canvas = document.getElementById('net-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0d0d15'; ctx.fillRect(0,0,W,H);
+
+  const padX = 60, padY = 40;
+  const netW = W - padX*2, netH = H - padY*2;
+  const nLayers = layers.length;
+  const xStep = netW / (nLayers - 1);
+
+  let positions = [];
+  for(let l = 0; l < nLayers; l++) {
+    const n = layers[l];
+    const x = padX + l * xStep;
+    let pos = [];
+    for(let j = 0; j < n; j++) {
+      const y = padY + netH / (n + 1) * (j + 1);
+      pos.push({ x, y });
+    }
+    positions.push(pos);
+  }
+
+  for(let l = 0; l < nLayers - 1; l++) {
+    for(let j = 0; j < layers[l+1]; j++) {
+      for(let k = 0; k < layers[l]; k++) {
+        const act = networkActivations[l][k] || 0;
+        const alpha = 0.1 + Math.abs(act) * 0.5;
+        const col = act > 0 ? `rgba(0,229,255,${alpha})` : `rgba(239,68,68,${alpha})`;
+        ctx.strokeStyle = col; ctx.lineWidth = 0.5 + Math.abs(act);
+        ctx.beginPath();
+        ctx.moveTo(positions[l][k].x, positions[l][k].y);
+        ctx.lineTo(positions[l+1][j].x, positions[l+1][j].y);
+        ctx.stroke();
+      }
+    }
+  }
+
+  const colors = ['#00e5ff', '#a855f7', '#a855f7', '#a855f7', '#ff6b35'];
+  for(let l = 0; l < nLayers; l++) {
+    const col = l === 0 ? colors[0] : l === nLayers-1 ? colors[4] : colors[1];
+    for(let j = 0; j < layers[l]; j++) {
+      const {x, y} = positions[l][j];
+      const act = networkActivations[l][j] || 0;
+      const r = 14 + Math.abs(act) * 6;
+      
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${l===0?'0,229,255':l===nLayers-1?'255,107,53':'168,85,247'},${0.1+Math.abs(act)*0.3})`;
+      ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      
+      ctx.fillStyle = '#fff'; ctx.font = '9px Space Mono'; ctx.textAlign = 'center';
+      ctx.fillText(act.toFixed(2), x, y + 3);
+    }
+    const lnames = ['Input', ...(networkConfig.hidden.map((_,i)=>`H${i+1}`)), 'Output'];
+    ctx.fillStyle = colors[Math.min(l, colors.length-1)];
+    ctx.font = '10px Syne'; ctx.textAlign = 'center';
+    ctx.fillText(lnames[l], positions[l][0].x, H - 10);
+  }
+  ctx.textAlign = 'left';
+}
+
+// ===== TRAINING PAGE =====
+let trainingTask = 'AND';
+let trainingData = {
+  AND:  [[0,0,0],[0,1,0],[1,0,0],[1,1,1]],
+  OR:   [[0,0,0],[0,1,1],[1,0,1],[1,1,1]],
+  NAND: [[0,0,1],[0,1,1],[1,0,1],[1,1,0]],
+  NOR:  [[0,0,1],[0,1,0],[1,0,0],[1,1,0]],
+  XOR:  [[0,0,0],[0,1,1],[1,0,1],[1,1,0]]
+};
+let trainWeights = [Math.random()-0.5, Math.random()-0.5];
+let trainBias = Math.random()-0.5;
+let xorW1 = [[Math.random()-0.5, Math.random()-0.5],[Math.random()-0.5, Math.random()-0.5]];
+let xorW2 = [Math.random()-0.5, Math.random()-0.5];
+let xorB1 = [0,0], xorB2 = 0;
+let lossHistory = [];
+let isTraining = false;
+
+function setTask(t) {
+  trainingTask = t;
+  document.querySelectorAll('#task-chips .chip').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  resetTraining();
+}
+function updateLR() {
+  const v = parseFloat(document.getElementById('lr-slider').value);
+  document.getElementById('lr-val').textContent = v.toFixed(2);
+  document.getElementById('stat-lr').textContent = v.toFixed(2);
+}
+function updateEpochs() {
+  const v = parseInt(document.getElementById('epoch-slider').value);
+  document.getElementById('epoch-val').textContent = v;
+}
+function resetTraining() {
+  trainWeights = [Math.random()-0.5, Math.random()-0.5];
+  trainBias = Math.random()-0.5;
+  xorW1 = [[Math.random()-0.5,Math.random()-0.5],[Math.random()-0.5,Math.random()-0.5]];
+  xorW2 = [Math.random()-0.5,Math.random()-0.5];
+  xorB1 = [0,0]; xorB2 = 0;
+  lossHistory = [];
+  document.getElementById('stat-epoch').textContent = 0;
+  document.getElementById('stat-loss').textContent = '—';
+  document.getElementById('stat-acc').textContent = '—';
+  drawLossChart();
+  updateTruthTable(0);
+  isTraining = false;
+  document.getElementById('train-btn').textContent = '▶ Навчати';
+}
+
+function startTraining() {
+  if(isTraining) return;
+  isTraining = true;
+  document.getElementById('train-btn').textContent = '⟳ Навчання...';
+  document.getElementById('train-btn').classList.add('running');
+  
+  const lr = parseFloat(document.getElementById('lr-slider').value);
+  const epochs = parseInt(document.getElementById('epoch-slider').value);
+  const data = trainingData[trainingTask];
+  const useXOR = trainingTask === 'XOR';
+  lossHistory = [];
+
+  let ep = 0;
+  function step_() {
+    if(ep >= epochs) {
+      isTraining = false;
+      document.getElementById('train-btn').textContent = '✓ Навчено';
+      document.getElementById('train-btn').classList.remove('running');
+      appendLog(`Навчання завершено: задача=${trainingTask}, epochs=${epochs}, lr=${lr}, loss=${lossHistory[lossHistory.length-1]?.toFixed(4)}`);
+      return;
+    }
+    let totalLoss = 0;
+    if(!useXOR) {
+      for(let [x1,x2,target] of data) {
+        const z = x1*trainWeights[0] + x2*trainWeights[1] + trainBias;
+        const y = sigmoid(z);
+        const err = target - y;
+        totalLoss += err*err;
+        const delta = err * sigmoid_d(z);
+        trainWeights[0] += lr * delta * x1;
+        trainWeights[1] += lr * delta * x2;
+        trainBias += lr * delta;
+      }
+    } else {
+      for(let [x1,x2,target] of data) {
+        let h = [sigmoid(x1*xorW1[0][0]+x2*xorW1[0][1]+xorB1[0]),
+                 sigmoid(x1*xorW1[1][0]+x2*xorW1[1][1]+xorB1[1])];
+        let oz = h[0]*xorW2[0]+h[1]*xorW2[1]+xorB2;
+        let o = sigmoid(oz);
+        let err = target - o;
+        totalLoss += err*err;
+        let dO = err * sigmoid_d(oz);
+        xorW2[0] += lr*dO*h[0]; xorW2[1] += lr*dO*h[1]; xorB2 += lr*dO;
+        for(let j=0;j<2;j++){
+          let dH = dO*xorW2[j]*sigmoid_d(x1*xorW1[j][0]+x2*xorW1[j][1]+xorB1[j]);
+          xorW1[j][0]+=lr*dH*x1; xorW1[j][1]+=lr*dH*x2; xorB1[j]+=lr*dH;
+        }
+      }
+    }
+    const mse = totalLoss / data.length;
+    lossHistory.push(mse);
+    ep++;
+    
+    if(ep % 5 === 0 || ep === epochs) {
+      document.getElementById('stat-epoch').textContent = ep;
+      document.getElementById('stat-loss').textContent = mse.toFixed(4);
+      let correct = 0;
+      for(let [x1,x2,target] of data) {
+        let pred;
+        if(!useXOR) {
+          pred = sigmoid(x1*trainWeights[0]+x2*trainWeights[1]+trainBias) > 0.5 ? 1 : 0;
+        } else {
+          let h=[sigmoid(x1*xorW1[0][0]+x2*xorW1[0][1]+xorB1[0]),sigmoid(x1*xorW1[1][0]+x2*xorW1[1][1]+xorB1[1])];
+          pred = sigmoid(h[0]*xorW2[0]+h[1]*xorW2[1]+xorB2) > 0.5 ? 1 : 0;
+        }
+        if(pred === target) correct++;
+      }
+      const acc = (correct/data.length*100).toFixed(0)+'%';
+      document.getElementById('stat-acc').textContent = acc;
+      drawLossChart();
+      updateTruthTable(ep);
+    }
+    setTimeout(step_, ep < 100 ? 8 : 2);
+  }
+  step_();
+}
+
+function updateTruthTable(ep) {
+  const data = trainingData[trainingTask];
+  const useXOR = trainingTask === 'XOR';
+  const tbody = document.querySelector('#truth-table tbody');
+  tbody.innerHTML = '';
+  for(let [x1,x2,target] of data) {
+    let raw, pred;
+    if(!useXOR) {
+      raw = sigmoid(x1*trainWeights[0]+x2*trainWeights[1]+trainBias);
+    } else {
+      let h=[sigmoid(x1*xorW1[0][0]+x2*xorW1[0][1]+xorB1[0]),sigmoid(x1*xorW1[1][0]+x2*xorW1[1][1]+xorB1[1])];
+      raw = sigmoid(h[0]*xorW2[0]+h[1]*xorW2[1]+xorB2);
+    }
+    pred = raw > 0.5 ? 1 : 0;
+    const ok = pred === target;
+    tbody.innerHTML += `<tr>
+      <td>${x1}</td><td>${x2}</td>
+      <td>${target}</td>
+      <td>${raw.toFixed(3)}</td>
+      <td class="${ok?'correct':'wrong'}">${ok?'✓':'✗'}</td>
+    </tr>`;
+  }
+}
+
+function drawLossChart() {
+  const canvas = document.getElementById('loss-chart');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0d0d15'; ctx.fillRect(0,0,W,H);
+
+  if(lossHistory.length < 2) {
+    ctx.fillStyle = '#5555aa'; ctx.font = '14px Space Mono'; ctx.textAlign='center';
+    ctx.fillText('Запустіть навчання щоб побачити графік', W/2, H/2);
+    ctx.textAlign='left'; return;
+  }
+
+  const padL=50,padR=20,padT=20,padB=40;
+  const chartW = W-padL-padR, chartH = H-padT-padB;
+  const maxL = Math.max(...lossHistory), minL = Math.min(...lossHistory);
+  
+  ctx.strokeStyle = '#1a1a2e'; ctx.lineWidth = 1;
+  for(let i=0;i<=5;i++) {
+    const y = padT + chartH/5*i;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+    const val = maxL - (maxL-minL)/5*i;
+    ctx.fillStyle='#5555aa'; ctx.font='10px Space Mono'; ctx.textAlign='right';
+    ctx.fillText(val.toFixed(4), padL-5, y+4);
+  }
+
+  ctx.beginPath();
+  lossHistory.forEach((l,i) => {
+    const x = padL + chartW*i/(lossHistory.length-1);
+    const y = padT + chartH*(1-(l-minL)/(maxL-minL+0.0001));
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#a855f7'; ctx.lineWidth=2.5; ctx.stroke();
+
+  ctx.lineTo(padL+chartW, padT+chartH); ctx.lineTo(padL, padT+chartH); ctx.closePath();
+  const grad = ctx.createLinearGradient(0,padT,0,padT+chartH);
+  grad.addColorStop(0,'rgba(168,85,247,0.3)'); grad.addColorStop(1,'rgba(168,85,247,0)');
+  ctx.fillStyle=grad; ctx.fill();
+
+  ctx.fillStyle='#8888aa'; ctx.font='11px Space Mono'; ctx.textAlign='center';
+  ctx.fillText('Епоха', W/2, H-5);
+  ctx.textAlign='left';
+}
+
+// ===== ACTIVATIONS PAGE =====
+let activeActFns = new Set(['sigmoid','relu','tanh']);
+const actColors = { sigmoid:'#00e5ff', relu:'#22c55e', tanh:'#a855f7', leaky:'#ff6b35', elu:'#eab308', step:'#ef4444' };
+const actFormulas = {
+  sigmoid: 'σ(x) = 1 / (1 + e⁻ˣ)',
+  relu: 'f(x) = max(0, x)',
+  tanh: 'f(x) = tanh(x)',
+  leaky: 'f(x) = x якщо x≥0; 0.01x якщо x<0',
+  elu: 'f(x) = x якщо x≥0; eˣ−1 якщо x<0',
+  step: 'f(x) = 1 якщо x≥0; 0 якщо x<0'
+};
+
+function toggleActFn(name, el) {
+  if(activeActFns.has(name)) { activeActFns.delete(name); el.classList.remove('active'); }
+  else { activeActFns.add(name); el.classList.add('active'); }
+  drawActivations();
+}
+
+function drawActivations() {
+  const canvas = document.getElementById('act-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle = '#0d0d15'; ctx.fillRect(0,0,W,H);
+
+  const range = parseFloat(document.getElementById('act-range').value);
+  document.getElementById('range-val').textContent = range;
+  const showD = document.getElementById('show-deriv').checked;
+
+  const padL=50,padR=20,padT=20,padB=40;
+  const cW=W-padL-padR, cH=H-padT-padB;
+  const cx=padL, cy=padT+cH/2;
+
+  ctx.strokeStyle='#1a1a2e'; ctx.lineWidth=1;
+  for(let i=0;i<=8;i++){
+    const y=padT+cH/8*i;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(W-padR,y); ctx.stroke();
+  }
+  for(let i=0;i<=8;i++){
+    const x=padL+cW/8*i;
+    ctx.beginPath(); ctx.moveTo(x,padT); ctx.lineTo(x,padT+cH); ctx.stroke();
+  }
+
+  const xAxis = cy;
+  ctx.strokeStyle='#333355'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(padL,xAxis); ctx.lineTo(W-padR,xAxis); ctx.stroke();
+  
+  ctx.fillStyle='#5555aa'; ctx.font='10px Space Mono'; ctx.textAlign='center';
+  for(let v=-range;v<=range;v+=range/2){
+    const x=padL+cW*(v+range)/(2*range);
+    ctx.fillText(v.toFixed(0), x, padT+cH+15);
+  }
+  ctx.textAlign='right';
+  for(let v=-1;v<=1;v+=0.5){
+    const y=padT+cH*(1-(v+1)/2);
+    ctx.fillText(v.toFixed(1), padL-4, y+4);
+  }
+  ctx.textAlign='left';
+
+  for(const name of activeActFns) {
+    const fn = activations[name];
+    const dfn = derivatives[name];
+    const col = actColors[name];
+
+    ctx.beginPath(); ctx.strokeStyle=col; ctx.lineWidth=2.5;
+    for(let px=0;px<=cW;px++){
+      const x = -range + 2*range*px/cW;
+      const y = fn(x);
+      const py = padT + cH*(1-(y+1)/2);
+      px===0 ? ctx.moveTo(padL+px,py) : ctx.lineTo(padL+px,py);
+    }
+    ctx.stroke();
+
+    if(showD && dfn) {
+      ctx.beginPath(); ctx.strokeStyle=col; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      for(let px=0;px<=cW;px++){
+        const x = -range + 2*range*px/cW;
+        const dy = dfn(x);
+        const py = padT + cH*(1-(dy+1)/2);
+        px===0 ? ctx.moveTo(padL+px,py) : ctx.lineTo(padL+px,py);
+      }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+
+  let li = 0;
+  for(const name of activeActFns) {
+    ctx.fillStyle=actColors[name]; ctx.fillRect(padL+10, padT+10+li*22, 20, 3);
+    ctx.fillStyle=actColors[name]; ctx.font='11px Space Mono';
+    ctx.fillText(name, padL+36, padT+14+li*22);
+    li++;
+  }
+
+  const infoDiv = document.getElementById('act-info-list');
+  infoDiv.innerHTML = '';
+  for(const name of activeActFns) {
+    infoDiv.innerHTML += `<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <span style="color:${actColors[name]};font-weight:700;font-size:12px">${name.toUpperCase()}</span>
+      <span style="color:var(--text2);font-size:11px;display:block;margin-top:4px">${actFormulas[name]}</span>
+    </div>`;
+  }
+}
+
+// ===== EXPORT =====
+function exportJSON() {
+  const data = {
+    meta: { author:'Дембіцький О.Ю.', group:'ПП-32', date: new Date().toISOString(), version:'1.0.0' },
+    neuron: {
+      activation: document.getElementById('n-activation').value,
+      bias: document.getElementById('n-bias').value,
+      inputs: nInputs
+    },
+    training: { task: trainingTask, lossHistory: lossHistory.slice(-20), weights: trainWeights, bias: trainBias },
+    network: { config: networkConfig }
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'neurosim_results.json';
+  a.click();
+  appendLog('Результати збережено у JSON');
+  notify('JSON збережено!');
+}
+
+function exportCSV() {
+  let csv = 'Epoch,Loss\n';
+  lossHistory.forEach((l,i) => { csv += `${i+1},${l.toFixed(6)}\n`; });
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'training_loss.csv';
+  a.click();
+  appendLog('Крива навчання збережена як CSV');
+  notify('CSV збережено!');
+}
+
+function exportPNG(id) {
+  const canvas = document.getElementById(id);
+  if(!canvas) return;
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = id + '.png';
+  a.click();
+  appendLog('Зображення ' + id + ' збережено');
+  notify('PNG збережено!');
+}
+
+function clearLog() {
+  document.getElementById('export-log').textContent = '// Лог очищено\n';
+}
+
+// ===== INIT =====
+document.getElementById('session-date').textContent = new Date().toLocaleDateString('uk-UA');
+rebuildNetworkFromConfig();
+drawActivations();
+calcNeuron();
+updateLR();
+updateEpochs();
+</script>
+</body>
+</html>
